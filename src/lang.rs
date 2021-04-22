@@ -55,7 +55,21 @@ peg::parser! {
         = start:position!() ident:ident() _? "::" _? e:expression() end:position!() { Locatable::new(Expression::Iterator { ident, content: Box::new(e) }, (start, end)) }
 
     rule condition() -> Locatable<Condition>
-        = start:position!() a:expression() _? "==" _? b:expression() end:position!() { Locatable::new(Condition { lhs: Box::new(a), rhs: Box::new(b), cond_type: ConditionType::Equal }, (start, end)) }
+        = start:position!() a:expression() _? cmp:$(">" / "<" / "==" / "<=" / ">=" / "!=") _? b:expression() end:position!() {
+            Locatable::new(Condition {
+                lhs: Box::new(a),
+                rhs: Box::new(b),
+                cond_type: match cmp {
+                    ">" => ConditionType::Greater,
+                    "<" => ConditionType::Lesser,
+                    ">=" => ConditionType::GreaterEqual,
+                    "<=" => ConditionType::LesserEqual,
+                    "==" => ConditionType::Equal,
+                    "!=" => ConditionType::NotEqual,
+                    _ => unreachable!(),
+                } 
+            }, (start, end)) 
+        }
 
     pub rule list_generator() -> Expression
         = "{" it:iterator() ** comma() _? "|" _? c:condition() ** comma() _? "}" { Expression::ListGenerator { iterators: it, qualifications: c } }

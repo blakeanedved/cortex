@@ -51,9 +51,9 @@ pub enum ConditionType {
 
 #[derive(Debug)]
 pub struct Condition {
+    pub cond_type: ConditionType,
     pub lhs: Box<LocExpr>,
     pub rhs: Box<LocExpr>,
-    pub cond_type: ConditionType
 }
 
 #[derive(Debug)]
