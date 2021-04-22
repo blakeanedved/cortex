@@ -27,20 +27,21 @@ pub enum Expression {
     Int(i32),
     Float(f32),
     Ident(String),
+    Tuple(Vec<LocExpr>),
     List(Vec<LocExpr>),
     ListGenerator {
        iterators: Vec<LocExpr>,
        qualifications: Vec<Locatable<Condition>>
     },
     Iterator {
-        ident: String,
-        content: Box<LocExpr>,
+        assignable: Locatable<Assignable>,
+        value: Box<LocExpr>,
     },
     Add { lhs: Box<LocExpr>, rhs: Box<LocExpr> },
     Sub { lhs: Box<LocExpr>, rhs: Box<LocExpr> },
     Mul { lhs: Box<LocExpr>, rhs: Box<LocExpr> },
     Div { lhs: Box<LocExpr>, rhs: Box<LocExpr> },
-    Call { ident: String, args: Vec<LocExpr> },
+    FunctionCall { ident: String, args: Vec<LocExpr> },
 }
 
 #[allow(dead_code)]
@@ -64,9 +65,15 @@ pub enum Statement {
         body: LocExpr,
     },
     Assignment {
-        ident: String,
+        assignable: Locatable<Assignable>,
         expr: LocExpr
     }
+}
+
+#[derive(Debug)]
+pub enum Assignable {
+    Single(String),
+    Multi(Vec<Locatable<Assignable>>)
 }
 
 pub type LocExpr = Locatable<Expression>;

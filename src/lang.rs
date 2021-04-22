@@ -11,11 +11,12 @@ peg::parser! {
         a:(@) _? "*" _? b:@ { Expression::Mul { lhs: Box::new(a), rhs: Box::new(b) } }
         a:(@) _? "/" _? b:@ { Expression::Div { lhs: Box::new(a), rhs: Box::new(b) } }
         --
-        ident:ident() "(" _? args:expression() ** comma() _? ")" { Expression::Call { ident, args } }
+        ident:ident() "(" _? args:expression() ** comma() _? ")" { Expression::FunctionCall { ident, args } }
         "(" _? e:expression() _? ")" { e.data }
         i:int() { i }
         f:float() { f }
         l:list() { l }
+        t:tuple() { t }
         id:ident() { Expression::Ident( id ) }
     }
 
@@ -29,12 +30,16 @@ peg::parser! {
         }
 
     pub rule assignment() -> Locatable<Statement>
-        = start:position!() ident:ident() _? "=" _? e:expression() end:position!() {
+        = start:position!() a:assignable() _? "=" _? e:expression() end:position!() {
             Locatable::new(Statement::Assignment {
-                ident,
+                assignable: a,
                 expr: e
             }, (start, end))
         }
+
+    rule assignable() -> Locatable<Assignable>
+        = start:position!() ident:ident() end:position!() { Locatable::new(Assignable::Single(ident), (start, end)) }
+        / start:position!() "(" _? a:assignable() ** comma() _? ")" end:position!() { Locatable::new(Assignable::Multi(a), (start, end)) }
 
     rule alpha() -> &'input str
         = a:$(['a'..='z' | 'A'..='Z']) { a }
@@ -48,11 +53,17 @@ peg::parser! {
     rule int() -> Expression
         = i:$(("-" / "+")? digit()+) { Expression::Int(i.parse::<i32>().unwrap()) }
 
+    rule tuple() -> Expression
+        = "(" _? values:expression() ** comma() _? ")" { Expression::Tuple(values) }
+
     rule list() -> Expression
         = "[" _? values:expression() ** comma() _? "]" { Expression::List(values) }
 
+    rule ident_list() -> Locatable<Vec<String>>
+        = start:position!() "(" _? idents:ident() ** comma() _? ")" end:position!() { Locatable::new(idents, (start, end)) }
+
     rule iterator() -> LocExpr
-        = start:position!() ident:ident() _? "::" _? e:expression() end:position!() { Locatable::new(Expression::Iterator { ident, content: Box::new(e) }, (start, end)) }
+        = start:position!() a:assignable() _? "::" _? e:expression() end:position!() { Locatable::new(Expression::Iterator { assignable: a, value: Box::new(e) }, (start, end)) }
 
     rule condition() -> Locatable<Condition>
         = start:position!() a:expression() _? cmp:$(">" / "<" / "==" / "<=" / ">=" / "!=") _? b:expression() end:position!() {
@@ -82,17 +93,3 @@ peg::parser! {
     rule comma() = _? "," _?
   }
 }
-
-    //rule t() -> ASTNode = ty:(number() / list() / boolean()) { ty }
-
-    //rule ident() -> ASTNode
-        // = s:$(quiet!{['a'..='z' | 'A'..='Z']['a'..='z' | 'A'..='Z' | '0'..='9']*}) { ASTNode::new_ident(s) }
-
-    //rule number() -> ASTNode
-      //= n:$("-"? (['0'..='9']+ "."? ['0'..='9']* / ['0'..='9']* "."? ['0'..='9']+)) { ASTNode::new_number(n.parse::<f64>().unwrap()) }
-
-    //rule boolean() -> ASTNode
-      //= s:$("true" / "false") { ASTNode::new_boolean(s == "true") }
-
-    //rule list() -> ASTNode
-      //= "[" _? l:t() ** comma() _? "]" { ASTNode::new_list(l) }
